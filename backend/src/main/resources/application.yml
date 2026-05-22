@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: treedms
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/treedms?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 120MB
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+app:
+  storage:
+    root: ${TREEDMS_STORAGE_ROOT:./storage/files}
+  auth:
+    admin:
+      username: ${TREEDMS_ADMIN_USERNAME:admin}
+      password: ${TREEDMS_ADMIN_PASSWORD:admin123}
+    visitor:
+      username: ${TREEDMS_VISITOR_USERNAME:visitor}
+      password: ${TREEDMS_VISITOR_PASSWORD:visitor123}

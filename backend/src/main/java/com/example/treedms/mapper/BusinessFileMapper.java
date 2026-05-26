@@ -9,8 +9,8 @@ import org.apache.ibatis.annotations.Update;
 public interface BusinessFileMapper extends BaseMapper<BusinessFile> {
 
     @Select("""
-            SELECT id, dept_id, original_name, storage_name, relative_path, content_type, size, sha256,
-                   uploader, pinned, sort_order, version_no, created_at, updated_at, deleted
+            SELECT id, dept_id, original_name, storage_name, relative_path, content_type, size,
+                   uploader, pinned, sort_order, created_at, updated_at, deleted
             FROM biz_file
             WHERE deleted = 1
             ORDER BY updated_at DESC, id DESC
@@ -18,8 +18,8 @@ public interface BusinessFileMapper extends BaseMapper<BusinessFile> {
     List<BusinessFile> selectDeletedFiles();
 
     @Select("""
-            SELECT id, dept_id, original_name, storage_name, relative_path, content_type, size, sha256,
-                   uploader, pinned, sort_order, version_no, created_at, updated_at, deleted
+            SELECT id, dept_id, original_name, storage_name, relative_path, content_type, size,
+                   uploader, pinned, sort_order, created_at, updated_at, deleted
             FROM biz_file
             WHERE id = #{id} AND deleted = 1
             """)

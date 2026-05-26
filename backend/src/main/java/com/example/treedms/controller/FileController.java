@@ -3,7 +3,7 @@ package com.example.treedms.controller;
 import com.example.treedms.dto.FileItemResponse;
 import com.example.treedms.dto.FileMoveRequest;
 import com.example.treedms.dto.FilePinRequest;
-import com.example.treedms.dto.FileVersionResponse;
+import com.example.treedms.entity.BusinessFile;
 import com.example.treedms.service.AuthService;
 import com.example.treedms.service.FileDocumentService;
 import com.example.treedms.service.StoredFileResource;
@@ -80,11 +80,6 @@ public class FileController {
         fileDocumentService.delete(id);
     }
 
-    @GetMapping("/{id}/versions")
-    public List<FileVersionResponse> versions(@PathVariable Long id) {
-        return fileDocumentService.versions(id, authService.currentUser());
-    }
-
     @GetMapping("/{id}/preview")
     public ResponseEntity<Resource> preview(@PathVariable Long id) {
         return fileResponse(fileDocumentService.open(id, authService.currentUser()), true);
@@ -95,25 +90,16 @@ public class FileController {
         return fileResponse(fileDocumentService.open(id, authService.currentUser()), false);
     }
 
-    @GetMapping("/{id}/versions/{versionId}/preview")
-    public ResponseEntity<Resource> previewVersion(@PathVariable Long id, @PathVariable Long versionId) {
-        return fileResponse(fileDocumentService.openVersion(id, versionId, authService.currentUser()), true);
-    }
-
-    @GetMapping("/{id}/versions/{versionId}/download")
-    public ResponseEntity<Resource> downloadVersion(@PathVariable Long id, @PathVariable Long versionId) {
-        return fileResponse(fileDocumentService.openVersion(id, versionId, authService.currentUser()), false);
-    }
-
     private ResponseEntity<Resource> fileResponse(StoredFileResource storedFile, boolean inline) {
+        BusinessFile file = storedFile.file();
         Resource resource = storedFile.resource();
         String dispositionType = inline ? "inline" : "attachment";
         ContentDisposition disposition = ContentDisposition.builder(dispositionType)
-                .filename(storedFile.filename(), StandardCharsets.UTF_8)
+                .filename(file.getOriginalName(), StandardCharsets.UTF_8)
                 .build();
 
         return ResponseEntity.ok()
-                .contentType(parseMediaType(storedFile.contentType()))
+                .contentType(parseMediaType(file.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(resource);
     }

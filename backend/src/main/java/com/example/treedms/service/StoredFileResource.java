@@ -1,10 +1,10 @@
 package com.example.treedms.service;
 
+import com.example.treedms.entity.BusinessFile;
 import org.springframework.core.io.Resource;
 
 public record StoredFileResource(
-        String filename,
-        String contentType,
+        BusinessFile file,
         Resource resource
 ) {
 }

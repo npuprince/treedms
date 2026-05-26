@@ -10,10 +10,7 @@ public record FileItemResponse(
         Long size,
         String uploader,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt,
         Boolean pinned,
-        Integer sortOrder,
-        Integer versionNo,
-        Integer versionCount
+        Integer sortOrder
 ) {
 }

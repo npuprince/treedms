@@ -157,13 +157,6 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="版本" width="110">
-            <template #default="{ row }">
-              <el-tag size="small" effect="plain">
-                v{{ row.versionNo || 1 }} / {{ row.versionCount || 1 }}
-              </el-tag>
-            </template>
-          </el-table-column>
           <el-table-column label="类型" min-width="160">
             <template #default="{ row }">
               <span class="muted">{{ row.contentType || 'unknown' }}</span>
@@ -176,10 +169,10 @@
           <el-table-column v-if="activeView === 'recycle'" label="原部门" width="120">
             <template #default="{ row }">ID: {{ row.departmentId }}</template>
           </el-table-column>
-          <el-table-column label="更新时间" width="180">
-            <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
+          <el-table-column label="上传时间" width="180">
+            <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="258" fixed="right">
+          <el-table-column label="操作" width="214" fixed="right">
             <template #default="{ row }">
               <div class="row-actions">
                 <el-tooltip v-if="isAdmin && activeView === 'recycle'" content="恢复" placement="top">
@@ -196,9 +189,6 @@
                     :type="row.pinned ? 'warning' : 'default'"
                     @click="toggleFilePin(row)"
                   />
-                </el-tooltip>
-                <el-tooltip v-if="activeView === 'files'" content="版本历史" placement="top">
-                  <el-button :icon="Clock" circle @click="openVersionDialog(row)" />
                 </el-tooltip>
                 <el-tooltip v-if="activeView === 'files'" content="预览" placement="top">
                   <el-button :icon="View" circle @click="previewFile(row)" />
@@ -282,39 +272,6 @@
       </div>
     </el-dialog>
 
-    <el-dialog v-model="versionDialog.visible" class="version-dialog" :title="versionDialogTitle" width="720px">
-      <el-table
-        v-loading="versionDialog.loading"
-        :data="versionDialog.versions"
-        empty-text="暂无版本记录"
-      >
-        <el-table-column label="版本" width="96">
-          <template #default="{ row }">
-            <el-tag :type="row.current ? 'success' : 'info'" effect="plain">v{{ row.versionNo }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="大小" width="120">
-          <template #default="{ row }">{{ formatSize(row.size) }}</template>
-        </el-table-column>
-        <el-table-column label="上传人" width="120" prop="uploader" />
-        <el-table-column label="上传时间" min-width="170">
-          <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
-          <template #default="{ row }">
-            <div class="row-actions">
-              <el-tooltip content="预览此版本" placement="top">
-                <el-button :icon="View" circle @click="previewVersion(row)" />
-              </el-tooltip>
-              <el-tooltip content="下载此版本" placement="top">
-                <el-button :icon="Download" circle @click="downloadVersion(row)" />
-              </el-tooltip>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
-
     <el-dialog
       v-model="departmentDialog.visible"
       :title="departmentDialogTitle"
@@ -390,7 +347,6 @@ import {
   Lock,
   Plus,
   Rank,
-  Clock,
   Refresh,
   RefreshLeft,
   Search,
@@ -407,7 +363,6 @@ import type {
   DepartmentNode,
   FavoriteDepartment,
   FileItem,
-  FileVersionItem,
   LoginResponse,
   Role,
   UserInfo
@@ -419,8 +374,6 @@ const treeProps = {
 }
 
 type UploadError = Parameters<NonNullable<UploadRequestOptions['onError']>>[0]
-type PreviewableFile = Pick<FileItem, 'originalName' | 'contentType'>
-
 const auth = reactive({
   token: localStorage.getItem(TOKEN_KEY) || '',
   username: '',
@@ -484,15 +437,7 @@ const preview = reactive({
   url: '',
   html: '',
   message: '',
-  downloadUrl: '',
-  downloadName: '',
   kind: 'other' as 'image' | 'frame' | 'docx' | 'other'
-})
-const versionDialog = reactive({
-  visible: false,
-  loading: false,
-  file: null as FileItem | null,
-  versions: [] as FileVersionItem[]
 })
 
 const isAuthed = computed(() => Boolean(auth.token))
@@ -505,9 +450,6 @@ const canDeleteContextDepartment = computed(() => {
 })
 const departmentDialogTitle = computed(() =>
   departmentDialog.mode === 'create' ? '添加子部门' : '修改部门名称'
-)
-const versionDialogTitle = computed(() =>
-  versionDialog.file ? `版本历史 - ${versionDialog.file.originalName}` : '版本历史'
 )
 const viewTitle = computed(() => {
   if (activeView.value === 'recycle') {
@@ -1019,11 +961,11 @@ async function uploadFile(options: UploadRequestOptions) {
   form.append('file', options.file)
 
   try {
-    const { data } = await api.post<FileItem>('/files/upload', form, {
+    await api.post('/files/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     options.onSuccess?.({})
-    ElMessage.success((data.versionCount || 1) > 1 ? `已上传为 v${data.versionNo}` : '上传成功')
+    ElMessage.success('上传成功')
     await loadFiles()
   } catch (error) {
     options.onError?.(error as UploadError)
@@ -1032,27 +974,16 @@ async function uploadFile(options: UploadRequestOptions) {
 }
 
 async function previewFile(row: FileItem) {
-  await previewResource(row, `/files/${row.id}/preview`, `/files/${row.id}/download`, row.originalName)
-}
-
-async function previewResource(
-  file: PreviewableFile,
-  previewUrl: string,
-  downloadUrl: string,
-  downloadName: string
-) {
   try {
     revokePreviewUrl()
     preview.html = ''
     preview.message = ''
-    const { data } = await api.get<Blob>(previewUrl, { responseType: 'blob' })
-    const kind = previewKind(file)
-    const blob = new Blob([data], { type: previewMimeType(file, data) })
+    const { data } = await api.get<Blob>(`/files/${row.id}/preview`, { responseType: 'blob' })
+    const kind = previewKind(row)
+    const blob = new Blob([data], { type: previewMimeType(row, data) })
 
-    preview.id = 0
-    preview.name = downloadName
-    preview.downloadUrl = downloadUrl
-    preview.downloadName = downloadName
+    preview.id = row.id
+    preview.name = row.originalName
 
     if (kind === 'docx') {
       const [{ default: mammoth }, { default: DOMPurify }] = await Promise.all([
@@ -1084,55 +1015,6 @@ async function downloadFile(row: FileItem) {
   try {
     const { data } = await api.get<Blob>(`/files/${row.id}/download`, { responseType: 'blob' })
     saveBlob(data, row.originalName)
-  } catch (error) {
-    ElMessage.error(apiMessage(error))
-  }
-}
-
-async function openVersionDialog(row: FileItem) {
-  versionDialog.visible = true
-  versionDialog.file = row
-  versionDialog.versions = []
-  await loadFileVersions()
-}
-
-async function loadFileVersions() {
-  if (!versionDialog.file) {
-    return
-  }
-  versionDialog.loading = true
-  try {
-    const { data } = await api.get<FileVersionItem[]>(`/files/${versionDialog.file.id}/versions`)
-    versionDialog.versions = data
-  } catch (error) {
-    ElMessage.error(apiMessage(error))
-  } finally {
-    versionDialog.loading = false
-  }
-}
-
-async function previewVersion(row: FileVersionItem) {
-  const file = versionDialog.file
-  if (!file) {
-    return
-  }
-  const name = versionedFilename(file.originalName, row.versionNo)
-  await previewResource(
-    { originalName: file.originalName, contentType: row.contentType },
-    `/files/${file.id}/versions/${row.id}/preview`,
-    `/files/${file.id}/versions/${row.id}/download`,
-    name
-  )
-}
-
-async function downloadVersion(row: FileVersionItem) {
-  const file = versionDialog.file
-  if (!file) {
-    return
-  }
-  try {
-    const { data } = await api.get<Blob>(`/files/${file.id}/versions/${row.id}/download`, { responseType: 'blob' })
-    saveBlob(data, versionedFilename(file.originalName, row.versionNo))
   } catch (error) {
     ElMessage.error(apiMessage(error))
   }
@@ -1181,18 +1063,23 @@ async function deleteFile(row: FileItem) {
 }
 
 async function downloadCurrentPreview() {
-  if (!preview.downloadUrl) {
+  if (!preview.id) {
     return
   }
-  try {
-    const { data } = await api.get<Blob>(preview.downloadUrl, { responseType: 'blob' })
-    saveBlob(data, preview.downloadName || preview.name)
-  } catch (error) {
-    ElMessage.error(apiMessage(error))
-  }
+  await downloadFile({
+    id: preview.id,
+    originalName: preview.name,
+    departmentId: selectedDepartment.value?.id || 0,
+    contentType: '',
+    size: 0,
+    uploader: '',
+    createdAt: '',
+    pinned: false,
+    sortOrder: 0
+  })
 }
 
-function previewKind(file: PreviewableFile) {
+function previewKind(file: FileItem) {
   const contentType = (file.contentType || '').toLowerCase()
   const extension = fileExtension(file.originalName)
   if (contentType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(extension)) {
@@ -1213,7 +1100,7 @@ function previewKind(file: PreviewableFile) {
   return 'other'
 }
 
-function previewMimeType(file: PreviewableFile, blob: Blob) {
+function previewMimeType(file: FileItem, blob: Blob) {
   const contentType = (file.contentType || blob.type || '').toLowerCase()
   const extension = fileExtension(file.originalName)
   if (extension === 'pdf') {
@@ -1242,23 +1129,12 @@ function fileExtension(filename: string) {
   return index >= 0 ? filename.slice(index + 1).toLowerCase() : ''
 }
 
-function versionedFilename(filename: string, versionNo: number) {
-  const suffix = `-v${versionNo || 1}`
-  const index = filename.lastIndexOf('.')
-  if (index <= 0) {
-    return `${filename}${suffix}`
-  }
-  return `${filename.slice(0, index)}${suffix}${filename.slice(index)}`
-}
-
 function clearPreview() {
   revokePreviewUrl()
   preview.id = 0
   preview.name = ''
   preview.html = ''
   preview.message = ''
-  preview.downloadUrl = ''
-  preview.downloadName = ''
   preview.kind = 'other'
 }
 
@@ -1327,9 +1203,6 @@ function restoreCachedUser() {
 function clearAuth() {
   closeDepartmentContextMenu()
   departmentContextMenu.target = null
-  versionDialog.visible = false
-  versionDialog.file = null
-  versionDialog.versions = []
   auth.token = ''
   auth.username = ''
   auth.role = 'VISITOR'

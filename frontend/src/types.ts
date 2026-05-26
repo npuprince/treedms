@@ -37,20 +37,6 @@ export interface FileItem {
   size: number
   uploader: string
   createdAt: string
-  updatedAt: string
   pinned: boolean
   sortOrder: number
-  versionNo: number
-  versionCount: number
-}
-
-export interface FileVersionItem {
-  id: number
-  fileId: number
-  versionNo: number
-  contentType: string
-  size: number
-  uploader: string
-  createdAt: string
-  current: boolean
 }

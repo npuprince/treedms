@@ -31,9 +31,6 @@ public class BusinessFile {
     @TableField("size")
     private Long size;
 
-    @TableField("sha256")
-    private String sha256;
-
     @TableField("uploader")
     private String uploader;
 
@@ -42,9 +39,6 @@ public class BusinessFile {
 
     @TableField("sort_order")
     private Integer sortOrder;
-
-    @TableField("version_no")
-    private Integer versionNo;
 
     @TableField("created_at")
     private LocalDateTime createdAt;
@@ -112,14 +106,6 @@ public class BusinessFile {
         this.size = size;
     }
 
-    public String getSha256() {
-        return sha256;
-    }
-
-    public void setSha256(String sha256) {
-        this.sha256 = sha256;
-    }
-
     public String getUploader() {
         return uploader;
     }
@@ -142,14 +128,6 @@ public class BusinessFile {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
-    }
-
-    public Integer getVersionNo() {
-        return versionNo;
-    }
-
-    public void setVersionNo(Integer versionNo) {
-        this.versionNo = versionNo;
     }
 
     public LocalDateTime getCreatedAt() {
